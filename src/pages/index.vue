@@ -5,10 +5,10 @@
     <!-- Barre de recherche -->
     <v-text-field
       v-model="search"
+      class="mb-6"
+      clearable
       label="Rechercher un Pokémon"
       prepend-icon="mdi-magnify"
-      clearable
-      class="mb-6"
     />
 
     <v-row>
@@ -22,20 +22,22 @@
         v-for="pokemon in filteredPokemons"
         :key="pokemon.id"
         cols="12"
-        sm="6"
-        md="4"
         lg="3"
+        md="4"
+        sm="6"
         xl="2"
       >
         <v-card class="mb-4 pa-4">
           <v-card-title class="justify-space-between">
             {{ pokemon.name }}
             <v-btn
-              icon
               :color="pokemonStore.isFavorite(pokemon) ? 'red' : 'grey'"
+              icon
               @click="toggleFavori(pokemon)"
             >
-              <v-icon>{{ pokemonStore.isFavorite(pokemon) ? 'mdi-heart' : 'mdi-heart-outline' }}</v-icon>
+              <v-icon>
+                {{ pokemonStore.isFavorite(pokemon) ? 'mdi-heart' : 'mdi-heart-outline' }}
+              </v-icon>
             </v-btn>
           </v-card-title>
 
@@ -50,38 +52,36 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
-import { usePokemonStore } from '@/stores/pokemonStore'
+  import { computed, onMounted, ref } from 'vue'
+  import { usePokemonStore } from '@/stores/pokemonStore'
 
-// Store Pinia
-const pokemonStore = usePokemonStore()
+  const pokemonStore = usePokemonStore()
 
-// Barre de recherche
-const search = ref('')
+  // Barre de recherche
+  const search = ref('')
 
-// Filtrer les Pokémons selon la recherche
-const filteredPokemons = computed(() => {
-  const query = search.value.toLowerCase().trim()
-  return pokemonStore.pokemons.filter(pokemon =>
-    pokemon.name.toLowerCase().includes(query)
-  )
-})
+  // Tri et filtrage
+  const filteredPokemons = computed(() => {
+    const query = search.value.toLowerCase().trim()
+    return [...pokemonStore.pokemons]
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .filter(pokemon => pokemon.name.toLowerCase().includes(query))
+  })
 
-// Ajouter / retirer des favoris
-function toggleFavori(pokemon) {
-  pokemonStore.toggleFavorite(pokemon)
-}
-
-// Charger les données au montage
-onMounted(async () => {
-  if (pokemonStore.pokemons.length === 0) {
-    await pokemonStore.init()
+  // Ajouter / retirer des favoris
+  function toggleFavori (pokemon) {
+    pokemonStore.toggleFavorite(pokemon)
   }
-  console.log('Pokémons chargés:', pokemonStore.pokemons.length)
-})
-const sortedPokemons = computed(() => {
-  return [...pokemonStore.pokemons].sort((a, b) =>
-    a.name.localeCompare(b.name)
-  )
-})
+
+  // Charger les données
+  onMounted(async () => {
+    try {
+      if (pokemonStore.pokemons.length === 0) {
+        await pokemonStore.init()
+      }
+      console.log('Pokémons chargés:', pokemonStore.pokemons.length)
+    } catch (error) {
+      console.error('Erreur lors du chargement des Pokémons:', error)
+    }
+  })
 </script>
