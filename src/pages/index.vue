@@ -11,10 +11,25 @@
       prepend-icon="mdi-magnify"
     />
 
+    <!-- Indicateur de chargement -->
+    <v-progress-linear
+      v-if="pokemonStore.isLoading"
+      class="mb-4"
+      color="primary"
+      indeterminate
+    />
+
+    <!-- Message si aucun Pokémon chargé -->
+    <v-alert v-if="!pokemonStore.isLoading && pokemonStore.pokemons.length === 0" class="mb-4" type="warning">
+      Aucun Pokémon disponible. Vérifiez que le serveur API est démarré.
+    </v-alert>
+
     <v-row>
-      <!-- Aucun Pokémon trouvé -->
-      <v-col v-if="filteredPokemons.length === 0" cols="12">
-        <v-alert type="warning">Aucun Pokémon trouvé.</v-alert>
+      <!-- Aucun Pokémon trouvé dans la recherche -->
+      <v-col v-if="filteredPokemons.length === 0 && pokemonStore.pokemons.length > 0" cols="12">
+        <v-alert class="text-center" type="info">
+          Aucun Pokémon ne correspond à votre recherche.
+        </v-alert>
       </v-col>
 
       <!-- Liste des Pokémons -->
@@ -27,25 +42,7 @@
         sm="6"
         xl="2"
       >
-        <v-card class="mb-4 pa-4">
-          <v-card-title class="justify-space-between">
-            {{ pokemon.name }}
-            <v-btn
-              :color="pokemonStore.isFavorite(pokemon) ? 'red' : 'grey'"
-              icon
-              @click="toggleFavori(pokemon)"
-            >
-              <v-icon>
-                {{ pokemonStore.isFavorite(pokemon) ? 'mdi-heart' : 'mdi-heart-outline' }}
-              </v-icon>
-            </v-btn>
-          </v-card-title>
-
-          <v-card-text>
-            <div>ID: {{ pokemon.id }}</div>
-            <div>Type: {{ pokemon.type }}</div>
-          </v-card-text>
-        </v-card>
+        <PokemonCard :pokemon="pokemon" />
       </v-col>
     </v-row>
   </v-container>
@@ -54,34 +51,45 @@
 <script setup>
   import { computed, onMounted, ref } from 'vue'
   import { usePokemonStore } from '@/stores/pokemonStore'
+  import PokemonCard from '@/components/PokemonCard.vue'
 
   const pokemonStore = usePokemonStore()
 
   // Barre de recherche
   const search = ref('')
 
-  // Tri et filtrage
-  const filteredPokemons = computed(() => {
-    const query = search.value.toLowerCase().trim()
-    return [...pokemonStore.pokemons]
-      .sort((a, b) => a.name.localeCompare(b.name))
-      .filter(pokemon => pokemon.name.toLowerCase().includes(query))
+  // Tri alphabétique
+  const sortedPokemons = computed(() => {
+    if (!pokemonStore.pokemons || pokemonStore.pokemons.length === 0) return []
+    return [...pokemonStore.pokemons].sort((a, b) =>
+      a.name.localeCompare(b.name)
+    )
   })
 
-  // Ajouter / retirer des favoris
-  function toggleFavori (pokemon) {
-    pokemonStore.toggleFavorite(pokemon)
-  }
+  // Filtrage avec recherche
+  const filteredPokemons = computed(() => {
+    const query = search.value.toLowerCase().trim()
+    if (!query) return sortedPokemons.value
 
-  // Charger les données
+    return sortedPokemons.value.filter(pokemon =>
+      pokemon.name.toLowerCase().includes(query)
+    )
+  })
+
+  // Charger les données au montage du composant
   onMounted(async () => {
-    try {
-      if (pokemonStore.pokemons.length === 0) {
+    console.log('🔄 Initialisation de la page Pokédex...')
+
+    // Si les Pokémons ne sont pas encore chargés, initialiser le store
+    if (pokemonStore.pokemons.length === 0) {
+      try {
         await pokemonStore.init()
+        console.log('✅ Pokémons chargés:', pokemonStore.pokemons.length)
+      } catch (error) {
+        console.error('❌ Erreur lors du chargement:', error)
       }
-      console.log('Pokémons chargés:', pokemonStore.pokemons.length)
-    } catch (error) {
-      console.error('Erreur lors du chargement des Pokémons:', error)
+    } else {
+      console.log('ℹ️ Pokémons déjà chargés:', pokemonStore.pokemons.length)
     }
   })
 </script>
